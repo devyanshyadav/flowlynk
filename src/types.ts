@@ -1,7 +1,7 @@
 import { ChatCompletionMessageParam } from "openai/resources/chat";
 
 export type Tool = {
-  function: (...args: object[]) => object;
+  function: (input: any) => Promise<object> | object;
   description: string;
   input: object;
 };
