@@ -11,32 +11,23 @@ const createLynk = (config: LynkConfig) => {
     apiKey,
     temperature = null,
     maxTokens = null,
+    history = [],
   } = config;
 
+  // Early return if no API key
   if (!apiKey) {
+    const errorStep = {
+      step: "error",
+      content: "API key is required",
+      status: false,
+      function: null,
+      input: null,
+    };
+
     return {
-      run: async () => ({
-        result: "API key is required",
-        steps: [
-          {
-            step: "error",
-            content: "API key is required",
-            status: false,
-            function: null,
-            input: null,
-          },
-        ],
-      }),
+      run: async () => ({ result: errorStep.content, steps: [errorStep] }),
       reset: () => {},
-      getSteps: () => [
-        {
-          step: "error",
-          content: "API key is required",
-          status: false,
-          function: null,
-          input: null,
-        },
-      ],
+      getSteps: () => [errorStep],
       messageLogs: () => [],
     };
   }
@@ -45,12 +36,28 @@ const createLynk = (config: LynkConfig) => {
     apiKey,
     ...(url ? { baseURL: url } : {}),
   });
-
   let messages: ChatCompletionMessageParam[] = [
     { role: "system", content: systemMessage(config) },
-    ...(config.history || []),
+    ...history,
   ];
   let steps: StepOutput[] = [];
+
+  // Helper function to create error steps
+  const createErrorStep = (message: string): StepOutput => ({
+    step: "error",
+    content: message,
+    status: false,
+    function: null,
+    input: null,
+  });
+
+  // Helper function to create output steps
+  const createOutputStep = (content: string): StepOutput => ({
+    step: "output",
+    content,
+    function: null,
+    input: null,
+  });
 
   const generateContent = async (): Promise<StepOutput> => {
     try {
@@ -59,29 +66,27 @@ const createLynk = (config: LynkConfig) => {
         messages,
         response_format: { type: "json_object" },
         max_tokens: maxTokens,
-        temperature: temperature,
+        temperature,
       });
+
       const content = response.choices[0]?.message?.content;
       if (!content) {
-        return {
-          step: "error",
-          content: "No response content received from API",
-          status: false,
-          function: null,
-          input: null,
-        };
+        return createErrorStep("No response content received from API");
       }
+
       return parseModelOutput(content);
     } catch (error) {
-      return {
-        step: "error",
-        content: `API error: ${
-          (error as Error).message || "Unknown API error"
-        }`,
-        status: false,
-        function: null,
-        input: null,
-      };
+      const stringifyData = JSON.stringify(error);
+      const statusCode = parseInt(stringifyData.match(/\d+/)?.[0] || "500");
+      return createErrorStep(
+        `API error: ${
+          ((error as Error).message &&
+            `${
+              (error as Error).message
+            }, For more info visit https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/${statusCode}`) ||
+          "Unknown API error"
+        }`
+      );
     }
   };
 
@@ -89,27 +94,20 @@ const createLynk = (config: LynkConfig) => {
     try {
       const cleaned = content.replace(/^```json\s*|\s*```$/gm, "").trim();
       const parsed = JSON.parse(cleaned);
+
       if (parsed.function && parsed.input && parsed.step !== "action") {
-        return {
-          step: "error",
-          content:
-            "Invalid step name: Tool/function calls must use 'action' step",
-          status: false,
-          function: null,
-          input: null,
-        };
+        return createErrorStep(
+          "Invalid step name: Tool/function calls must use 'action' step"
+        );
       }
+
       return parsed;
     } catch (error) {
-      return {
-        step: "error",
-        content: `JSON parsing error: ${
+      return createErrorStep(
+        `JSON parsing error: ${
           (error as Error).message || "Invalid response format"
-        }`,
-        status: false,
-        function: null,
-        input: null,
-      };
+        }`
+      );
     }
   };
 
@@ -120,14 +118,9 @@ const createLynk = (config: LynkConfig) => {
     try {
       const tool = tools[functionName];
       if (!tool) {
-        return {
-          step: "error",
-          content: `Tool not found: ${functionName}`,
-          status: false,
-          function: null,
-          input: null,
-        };
+        return createErrorStep(`Tool not found: ${functionName}`);
       }
+
       await tool.function(input);
       return {
         step: "action",
@@ -137,16 +130,23 @@ const createLynk = (config: LynkConfig) => {
         status: true,
       };
     } catch (error) {
-      return {
-        step: "error",
-        content: `Tool execution error: ${functionName} failed - ${
+      return createErrorStep(
+        `Tool execution error: ${functionName} failed - ${
           (error as Error).message || "Unknown tool error"
-        }`,
-        status: false,
-        function: null,
-        input: null,
-      };
+        }`
+      );
     }
+  };
+
+  const handleError = (
+    errorStep: StepOutput
+  ): { result: string; steps: StepOutput[] } => {
+    messages.push({ role: "assistant", content: JSON.stringify(errorStep) });
+    const outputStep = createOutputStep(
+      errorStep.content || "An error occurred"
+    );
+    steps.push(outputStep);
+    return { result: outputStep.content || "An error occurred", steps };
   };
 
   const run = async (
@@ -165,85 +165,55 @@ const createLynk = (config: LynkConfig) => {
       }
 
       if (parsedData.step === "error") {
-        messages.push({
-          role: "assistant",
-          content: JSON.stringify(parsedData),
-        });
-        const errorStep = {
-          step: "output",
-          content: parsedData.content || "An error occurred",
-          function: null,
-          input: null,
-        };
-        steps.push(errorStep);
-        return { result: errorStep.content, steps };
+        return handleError(parsedData);
       }
 
       messages.push({ role: "assistant", content: JSON.stringify(parsedData) });
 
       switch (parsedData.step) {
         case "action":
-          if (parsedData.function && parsedData.input) {
-            const toolResult = await executeTool(
-              parsedData.function,
-              parsedData.input
+          if (!parsedData.function || !parsedData.input) {
+            const errorStep = createErrorStep(
+              "Invalid action step: Missing function or input fields"
             );
-            steps.push(toolResult);
-            if (toolResult.step === "error") {
-              messages.push({
-                role: "assistant",
-                content: JSON.stringify(toolResult),
-              });
-              const errorStep = {
-                step: "output",
-                content: toolResult.content || "Tool execution failed",
-                function: null,
-                input: null,
-              };
-              steps.push(errorStep);
-              return { result: errorStep.content, steps };
-            }
-            messages.push({
-              role: "user",
-              content: `{step: "observe", content: ${JSON.stringify(
-                toolResult
-              )}}`,
-            });
-          } else {
-            const errorStep = {
-              step: "error",
-              content: "Invalid action step: Missing function or input fields",
-              status: false,
-              function: null,
-              input: null,
-            };
             steps.push(errorStep);
-            messages.push({
-              role: "assistant",
-              content: JSON.stringify(errorStep),
-            });
-            const outputStep = {
-              step: "output",
-              content: errorStep.content,
-              function: null,
-              input: null,
-            };
-            steps.push(outputStep);
-            return { result: outputStep.content, steps };
+            return handleError(errorStep);
           }
+
+          const toolResult = await executeTool(
+            parsedData.function,
+            parsedData.input
+          );
+          steps.push(toolResult);
+
+          if (toolResult.step === "error") {
+            return handleError(toolResult);
+          }
+
+          messages.push({
+            role: "user",
+            content: `{step: "observe", content: ${JSON.stringify(
+              toolResult
+            )}}`,
+          });
           break;
+
         case "demand":
-          const demandStep = {
-            step: "output",
-            content: parsedData.content || "Tool required but not available",
-            function: null,
-            input: null,
-          };
+          const demandStep = createOutputStep(
+            parsedData.content || "Tool required but not available"
+          );
           steps.push(demandStep);
-          return { result: demandStep.content, steps };
+          return {
+            result: demandStep.content || "Tool required but not available",
+            steps,
+          };
+
         case "output":
-          const finalResult = parsedData.content || "No response provided";
-          return { result: finalResult, steps };
+          return {
+            result: parsedData.content || "No response provided",
+            steps,
+          };
+
         default:
           messages.push({ role: "user", content: "proceed with next step" });
           break;
@@ -256,8 +226,12 @@ const createLynk = (config: LynkConfig) => {
     steps = [];
   };
 
-  const getSteps = () => [...steps];
-  return { run, reset, getSteps, messageLogs: () => [...messages.slice(1)] };
+  return {
+    run,
+    reset,
+    getSteps: () => [...steps],
+    messageLogs: () => [...messages.slice(1)],
+  };
 };
 
 export default createLynk;
