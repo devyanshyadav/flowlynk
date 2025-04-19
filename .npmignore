@@ -1,0 +1,8 @@
+src
+*.ts
+*.tsx
+tests
+*.test.js
+*.test.ts
+tsup.config.ts
+*.log
