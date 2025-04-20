@@ -16,7 +16,7 @@ export type StepOutput = {
 
 export type ExampleStep = {
   step: string;
-  content?: string;
+  content: string;
   function?: string;
   input?: object[];
 };
@@ -33,10 +33,10 @@ export type LynkStep = {
 
 export type LynkConfig = {
   userSystemPrompt?: string;
-  tools: Record<string, Tool>;
+  tools?: Record<string, Tool>;
   steps?: LynkStep[];
   model: string;
-  url?: string;
+  url: string;
   apiKey: string;
   examples?: Example[];
   history?: ChatCompletionMessageParam[];

@@ -116,6 +116,9 @@ const createLynk = (config: LynkConfig) => {
     input: object
   ): Promise<StepOutput> => {
     try {
+      if (!tools) {
+        return createErrorStep("No tools provided");
+      }
       const tool = tools[functionName];
       if (!tool) {
         return createErrorStep(`Tool not found: ${functionName}`);
