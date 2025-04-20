@@ -1,13 +1,13 @@
-# FlowLynk - Smart AI Agent Creation with Chain of Thought
+# FlowLynk - Build Smart AI Agents with Chain of Thought in Minutes
 
 FlowLynk is a TypeScript package that simplifies building AI-powered agents with LLMs via OpenAI's SDK. It uses Chain of Thought (CoT) reasoning to break down complex problems into logical steps.
 
 ## Why FlowLynk?
 
 - **Chain of Thought Reasoning**: Uses CoT to reason through tasks logically, step by step.
-- **Universal LLM Support**: Works with OpenAI, Gemini, and other compatible LLMs.
-- **Modular Workflows**: Define custom steps, tools, and prompts for tailored pipelines.
-- **Robust Tool Integration**: Seamlessly incorporate external tools with input validation.
+- **Universal LLM Support**: Works with OpenAI, Gemini, and other LLMs compatible with OpenAI's SDK.
+- **Modular Workflows**: Define custom steps, tools, examples and prompts for tailored pipelines.
+- **Robust Tool Integration**: Seamlessly incorporate external tools with input as arguments.
 - **Error Resilience**: Handles API failures, tool errors, and invalid inputs gracefully.
 - **Developer-Friendly**: TypeScript-ready with step-by-step execution and real-time callbacks.
 - **Beginner-Friendly**: Simple error messages and TypeScript safety.
@@ -38,10 +38,9 @@ const lynk = createLynk({
   apiKey: process.env.GEMINI_API_KEY || '',
   model: 'gemini-2.0-flash',
   url: "https://generativelanguage.googleapis.com/v1beta/openai",
-  tools: {},
   steps: [
     { name: 'think', purpose: 'Reason about the query' },
-    { name: 'answer', purpose: 'Provide the final answer' },
+    { name: 'explain', purpose: 'Provide the final answer' },
   ],
 });
 
@@ -218,8 +217,8 @@ const agent = createAgent({
   url: "https://generativelanguage.googleapis.com/v1beta/openai",
   tools: {
     getWeather: {
-      function: async (input: { city: string }) => ({
-        city: input.city,
+      function: async ({ city }: { city: string }) => ({
+        city: city,
         temperature: '25°C', // Mock response
       }),
       description: 'Fetches weather data for a city',
@@ -232,7 +231,7 @@ const agent = createAgent({
   ],
   examples: [
     {
-      UserQuery: 'What's the weather in London?',
+      UserQuery: 'What\'s the weather in London?',
       Output: [
         { step: 'initialization', content: 'Analyzing query to fetch weather' },
         { step: 'action', function: 'getWeather', input: [{ city: 'London' }] },
@@ -244,7 +243,7 @@ const agent = createAgent({
 
 async function runAdvancedAgent() {
   const { result, steps } = await agent.run(
-    'What's the weather in New York?',
+    'What\'s the weather in New York?',
     (step) => console.log('Current Step:', step)
   );
   console.log('Final Result:', result);

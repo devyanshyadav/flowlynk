@@ -1,6 +1,6 @@
 {
   "name": "flowlynk",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "FlowLynk is a TypeScript package that simplifies building AI-powered agents with LLMs via OpenAI's SDK. It uses Chain of Thought (CoT) reasoning to break down complex problems into logical steps.",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
