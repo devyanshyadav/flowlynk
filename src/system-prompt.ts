@@ -2,7 +2,7 @@ import { LynkConfig } from "./types";
 
 const systemMessage = (config: LynkConfig) => {
   const { tools, examples = [], userSystemPrompt } = config;
-  const toolDescriptions = Object.entries(tools)
+  const toolDescriptions = Object.entries(tools || {})
     .map(([name, tool]) => {
       const inputParams = Object.entries(tool.input)
         .map(([paramName, paramType]) => `${paramName}: ${paramType}`)
