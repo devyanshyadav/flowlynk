@@ -234,7 +234,7 @@ const agent = createAgent({
       UserQuery: 'What\'s the weather in London?',
       Output: [
         { step: 'initialization', content: 'Analyzing query to fetch weather' },
-        { step: 'action', function: 'getWeather', input: [{ city: 'London' }] },
+        { step: 'action', function: 'getWeather', input: { city: 'London' } },
         { step: 'output', content: 'The temperature in London is 25°C' },
       ],
     },
