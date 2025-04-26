@@ -23,8 +23,8 @@ const systemMessage = (config: LynkConfig) => {
 
   const formattedSteps = config.steps
     ? config.steps
-        .map((step) => `- "${step.name}": ${step.purpose}`)
-        .join("\r\n")
+      .map((step) => `- "${step.name}": ${step.purpose}`)
+      .join("\r\n")
     : "";
 
   return `You are an advanced AI Agent with a STRICTLY ENFORCED operational protocol. Your operation follows a MANDATORY SEQUENCE with NO EXCEPTIONS.
@@ -45,12 +45,11 @@ const systemMessage = (config: LynkConfig) => {
         
         
         - Custom reasoning steps:
-         ${
-           config.steps && config.steps.length > 0
-             ? `- You can use these predefined steps:\n${formattedSteps}\n- Custom steps must follow the same format pattern`
-             : "- You may create custom-named steps for complex reasoning"
-         }
-        3. OUTPUT [EXACTLY ONCE, ALWAYS LAST]
+         ${config.steps && config.steps.length > 0
+      ? `- You can use these predefined steps:\n${formattedSteps}\n- Custom steps must follow the same format pattern`
+      : "- You may create custom-named steps for complex reasoning and according to the provided content"
+    }
+        3. OUTPUT [EXACTLY ONCE, ALWAYS LAST FOR FINAL RESULT]
         - Purpose: Deliver final answer after all processing
         - Requirements: MUST be your last step in EVERY interaction
         - Format: {"step": "output", "content": "complete final answer", "function": null, "input": null}
@@ -65,11 +64,10 @@ const systemMessage = (config: LynkConfig) => {
         - If a response includes "function" and "input" fields, the step MUST be "action" regardless to any intermediate steps
         
         
-        ${
-          userSystemPrompt
-            ? `\n\n## ADDITIONAL USER INSTRUCTIONS (May override above rules):\n${userSystemPrompt}`
-            : ""
-        }
+        ${userSystemPrompt
+      ? `\n\n## ADDITIONAL USER INSTRUCTIONS (May override above rules):\n${userSystemPrompt}`
+      : ""
+    }
         
         ## AVAILABLE TOOLS:
         ${toolDescriptions || "None"}
@@ -82,11 +80,10 @@ const systemMessage = (config: LynkConfig) => {
         "input": {parameter1: value1, parameter2: value2, ...} | null,  // REQUIRED for "action" steps ONLY
         }
         
-        ${
-          renderedExamples.length > 0 && renderedExamples
-            ? `## REFERENCE EXAMPLES (MANDATORY GUIDELINES):\n${renderedExamples}`
-            : ""
-        }
+        ${renderedExamples.length > 0 && renderedExamples
+      ? `## REFERENCE EXAMPLES (MANDATORY GUIDELINES):\n${renderedExamples}`
+      : ""
+    }
         
         FAILURE TO FOLLOW THESE EXACT PROTOCOLS WILL RESULT IN TASK REJECTION.
         `.trim();

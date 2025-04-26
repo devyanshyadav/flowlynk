@@ -89,30 +89,17 @@ const createLynk = (config: LynkConfig) => {
   const executeTool = async (
     functionName: string,
     input: object
-  ): Promise<StepOutput> => {
-    try {
-      if (!tools) {
-        return createErrorStep("No tools provided");
-      }
-      const tool = tools[functionName];
-      if (!tool) {
-        return createErrorStep(`Tool not found: ${functionName}`);
-      }
-
-      await tool.function(input);
-      return {
-        step: "action",
-        content: `Successfully executed tool ${functionName}`,
-        function: functionName,
-        input,
-        status: true,
-      };
-    } catch (error) {
-      return createErrorStep(
-        `Tool execution error: ${functionName} failed - ${(error as Error).message || "Unknown tool error"
-        }`
-      );
+  ) => {
+    if (!tools) {
+      return createErrorStep("No tools provided");
     }
+    const tool = tools[functionName];
+    if (!tool) {
+      return createErrorStep(`Tool not found: ${functionName}`);
+    }
+
+    const toolResult = await tool.function(input);
+    return toolResult;
   };
 
   const handleError = (
@@ -161,12 +148,6 @@ const createLynk = (config: LynkConfig) => {
             parsedData.function,
             parsedData.input
           );
-          steps.push(toolResult);
-
-          if (toolResult.step === "error") {
-            return handleError(toolResult);
-          }
-
           messages.push({
             role: "user",
             content: `{step: "observe", content: ${JSON.stringify(
@@ -182,7 +163,7 @@ const createLynk = (config: LynkConfig) => {
           };
 
         default:
-          messages.push({ role: "user", content: "proceed with next step" });
+          messages.push({ role: "user", content: "Proceed with the next step" });
           break;
       }
     }
