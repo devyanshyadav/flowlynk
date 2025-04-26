@@ -17,8 +17,8 @@ export type StepOutput = {
 export type ExampleStep = {
   step: string;
   content: string;
-  function?: string;
-  input?: object[];
+  function?: string | null;
+  input?: object | null;
 };
 
 export type Example = {

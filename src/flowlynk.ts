@@ -14,26 +14,8 @@ const createLynk = (config: LynkConfig) => {
     history = [],
   } = config;
 
-  // Early return if no API key
-  if (!apiKey) {
-    const errorStep = {
-      step: "error",
-      content: "API key is required",
-      status: false,
-      function: null,
-      input: null,
-    };
-
-    return {
-      run: async () => ({ result: errorStep.content, steps: [errorStep] }),
-      reset: () => {},
-      getSteps: () => [errorStep],
-      messageLogs: () => [],
-    };
-  }
-
   const openai = new OpenAI({
-    apiKey,
+    apiKey: apiKey || "",
     ...(url ? { baseURL: url } : {}),
   });
   let messages: ChatCompletionMessageParam[] = [
@@ -61,6 +43,9 @@ const createLynk = (config: LynkConfig) => {
 
   const generateContent = async (): Promise<StepOutput> => {
     try {
+      if (!apiKey) {
+        throw new Error("API key is required");
+      }
       const response = await openai.chat.completions.create({
         model,
         messages,
@@ -79,12 +64,10 @@ const createLynk = (config: LynkConfig) => {
       const stringifyData = JSON.stringify(error);
       const statusCode = parseInt(stringifyData.match(/\d+/)?.[0] || "500");
       return createErrorStep(
-        `API error: ${
-          ((error as Error).message &&
-            `${
-              (error as Error).message
-            }, For more info visit https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/${statusCode}`) ||
-          "Unknown API error"
+        `API error: ${((error as Error).message &&
+          `${(error as Error).message
+          }, For more info visit https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/${statusCode}`) ||
+        "Unknown API error"
         }`
       );
     }
@@ -94,18 +77,10 @@ const createLynk = (config: LynkConfig) => {
     try {
       const cleaned = content.replace(/^```json\s*|\s*```$/gm, "").trim();
       const parsed = JSON.parse(cleaned);
-
-      if (parsed.function && parsed.input && parsed.step !== "action") {
-        return createErrorStep(
-          "Invalid step name: Tool/function calls must use 'action' step"
-        );
-      }
-
       return parsed;
     } catch (error) {
       return createErrorStep(
-        `JSON parsing error: ${
-          (error as Error).message || "Invalid response format"
+        `JSON parsing error: ${(error as Error).message || "Invalid response format"
         }`
       );
     }
@@ -134,8 +109,7 @@ const createLynk = (config: LynkConfig) => {
       };
     } catch (error) {
       return createErrorStep(
-        `Tool execution error: ${functionName} failed - ${
-          (error as Error).message || "Unknown tool error"
+        `Tool execution error: ${functionName} failed - ${(error as Error).message || "Unknown tool error"
         }`
       );
     }
@@ -200,16 +174,6 @@ const createLynk = (config: LynkConfig) => {
             )}}`,
           });
           break;
-
-        case "demand":
-          const demandStep = createOutputStep(
-            parsedData.content || "Tool required but not available"
-          );
-          steps.push(demandStep);
-          return {
-            result: demandStep.content || "Tool required but not available",
-            steps,
-          };
 
         case "output":
           return {

@@ -1,4 +1,6 @@
 # FlowLynk - Build Smart AI Agents with Chain of Thought in Minutes
+![banner](public/banner.png)
+
 
 FlowLynk is a TypeScript package that simplifies building AI-powered agents with LLMs via OpenAI's SDK. It uses Chain of Thought (CoT) reasoning to break down complex problems into logical steps.
 
@@ -233,7 +235,7 @@ const agent = createAgent({
     {
       UserQuery: 'What\'s the weather in London?',
       Output: [
-        { step: 'initialization', content: 'Analyzing query to fetch weather' },
+        { step: 'initiate', content: 'Analyzing query to fetch weather' },
         { step: 'action', function: 'getWeather', input: { city: 'London' } },
         { step: 'output', content: 'The temperature in London is 25°C' },
       ],
@@ -274,7 +276,7 @@ FlowLynk accepts a configuration object with the following options:
 ## Features
 
 - **Chain of Thought**: Reasons step-by-step like a human for complex problem solving.
-- **Structured Workflow**: Enforces initialization → intermediate steps → output.
+- **Structured Workflow**: Enforces initiate → intermediate steps → output.
 - **Tool Execution**: Safely runs custom tools with validated inputs and error handling.
 - **Step Tracking**: Access all steps for debugging or logging.
 - **Message Logs**: Retrieve conversation history with `agent.messageLogs()`.
